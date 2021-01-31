@@ -1,0 +1,209 @@
+---
+title: "GLM"
+output: html_notebook
+---
+## 
+```{r}
+rm(list = ls())
+```
+
+## packages
+```{r}
+library(AER)
+library(survival)
+library(robust)
+library(qcc)
+```
+
+# Logistic Regression Example1
+
+import and glimpse data
+```{r}
+data("Affairs")
+summary(Affairs)
+```
+
+```{r}
+table(Affairs$affairs)
+```
+
+sort data
+```{r}
+Affairs$ynaffaire[Affairs$affairs > 0] <- 1
+Affairs$ynaffaire[Affairs$affairs == 0] <- 0
+Affairs$ynaffaire <- factor(Affairs$affairs, levels = c(0, 1), labels = c('No', 'Yes'))
+table(Affairs$ynaffaire)
+```
+
+fit models
+```{r}
+model1.1 <- glm(ynaffaire ~ gender + age + yearsmarried + children + religiousness + education + 
+              occupation + rating, data = Affairs, family = binomial())
+summary(model1.1)
+```
+
+```{r}
+model1.2 <- glm(ynaffaire ~ age + yearsmarried + religiousness + rating, data = Affairs, family = binomial())
+summary(model1.2)
+```
+
+LRT
+```{r}
+lrtest(model1.1, model1.2)
+```
+
+model1.2 is better
+```{r}
+coef(model1.2)
+```
+
+```{r}
+exp(coef(model1.2))
+```
+
+set a new data for testing
+```{r}
+testdata <- data.frame(rating = c(1, 2, 3, 4, 5), age = mean(Affairs$age), 
+                       yearsmarried = mean(Affairs$yearsmarried), 
+                       religiousness = mean(Affairs$religiousness))
+testdata
+```
+
+```{r}
+testdata$prob <- predict(model1.2, newdata = testdata, type = 'response')
+testdata
+```
+
+
+# Logistic Regression example2
+
+import data
+```{r}
+Cancer <- read.csv('~/Desktop/MachineLearning/Data/example11_4.csv', header = TRUE, sep = ',')
+attach(Cancer)
+```
+
+fit models
+```{r}
+model2.1 <- glm(y ~ x1 + x2, family = binomial(), data = Cancer)
+summary(model2.1)
+```
+
+```{r}
+model2.2 <- glm(y ~ x1 + x2 + x1 * x2, family = binomial(), data = Cancer)
+summary(model2.2)
+```
+
+```{r}
+detach(Cancer)
+```
+
+
+# Logistic Regression example3
+
+```{r}
+Coronary <- read.csv('~/Desktop/MachineLearning/Data/example11_5.csv')
+attach(Coronary)
+```
+
+fit models
+```{r}
+model3.1 <- glm(y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8, family = binomial(), 
+                data = Coronary)
+summary(model3.1)
+```
+
+```{r}
+model3.0 <- glm(y ~ 1, family = binomial(), data = Coronary)
+summary(model3.0)
+```
+
+```{r}
+bothways <- step(model3.0, list(lower = formula(model3.0), upper = formula(model3.1)), 
+                 direction = 'both')
+```
+
+```{r}
+model3.2 <- glm(y ~ x6 + x5 + x8 + x1 + x2, family = binomial(), data = Coronary)
+summary(model3.2)
+```
+
+```{r}
+detach(Coronary)
+```
+
+
+# Conditional Logistic Regression
+
+import
+```{r}
+Cancer2 <- read.csv('~/Desktop/MachineLearning/Data/example11_6.csv')
+attach(Cancer2)
+```
+
+fit model
+```{r}
+model4.1 <- glm(outcome ~ exposure + strata(id))
+summary(model4.1)
+```
+
+```{r}
+detach(Cancer2)
+```
+
+
+# Poission Regression example
+
+import
+```{r}
+data("breslow.dat")
+names(breslow.dat)
+```
+
+```{r}
+summary(breslow.dat[c(6, 7, 8, 10)])
+```
+
+plot distribution of post-treatment seizure counts
+```{r}
+opar <- par(no.readonly = TRUE)
+par(mfrow = c(1, 2))
+attach(breslow.dat)
+hist(sumY, breaks = 20, xlab = 'Seizure Count', main = 'Dstribution of Seizure')
+```
+
+```{r}
+boxplot(sumY ~ Trt, xlab = 'Seizure Count', main = 'Group Comparisons')
+par(opar)
+```
+fit model
+```{r}
+model5 <- glm(sumY ~ Base + Age + Trt, data = breslow.dat, family = poisson())
+summary(model5)
+```
+
+interpret model parameters
+```{r}
+coef(model5)
+```
+
+```{r}
+exp(coef(model5))
+```
+
+evaluate overdispersion
+```{r}
+deviance(model5)/df.residual(model5)
+```
+
+```{r}
+qcc.overdispersion.test(breslow.dat$sumY, type = 'poisson')
+```
+
+
+fit model with quasipoission
+```{r}
+model5.1 <- glm(sumY ~ Base + Age + Trt, data = breslow.dat, family = quasipoisson())
+summary(model5.1)
+```
+
