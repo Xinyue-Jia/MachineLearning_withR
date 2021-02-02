@@ -1,0 +1,155 @@
+---
+title: "2.Logistic"
+output: html_notebook
+---
+## 
+```{r}
+rm(list = ls())
+```
+
+
+## library
+```{r}
+library(foreign)
+library(ggplot2)
+library(nnet)
+library(reshape2)
+library(MASS)
+library(Hmisc)
+```
+
+
+# multinomial logistic regression
+
+import data
+```{r}
+ml <- read.dta('~/Desktop/MachineLearning/Data/hsbdemo.dta')
+with(ml, table(ses, prog))
+with(ml, do.call(rbind, tapply(write, prog, function(x)c(M = mean(x), SD = sd(x)))))
+```
+
+```{r}
+ml$prog2 <- relevel(ml$prog, ref = 'academic')
+```
+
+fit model
+```{r}
+model1 <- multinom(prog2 ~ ses + write, data = ml)
+summary(model1)
+```
+
+2-tailed z test
+```{r}
+z <- summary(model1)$coefficients/summary(model1)$standard.errors
+z
+```
+
+```{r}
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+p
+```
+
+```{r}
+exp(coef(model1))
+```
+
+```{r}
+head(pp <- fitted(model1))
+```
+
+```{r}
+dses <- data.frame(ses = c('low', 'middle', 'high'), write = mean(ml$write))
+predict(model1, newdata = dses, 'probs')
+```
+
+```{r}
+dwrite <- data.frame(ses = c('low', 'middle', 'high'), each = 41, write = rep(c(30: 70), 3))
+```
+
+store the predicted probabilities for each value of ses and write
+```{r}
+pp.write <- cbind(dwrite, predict(model1, newdata = dwrite, type = 'probs', se = TRUE))
+```
+
+calculate the mean probabilities within each level of ses
+```{r}
+by(pp.write[ , 3:5], pp.write$ses, colMeans)
+```
+
+melt data set to long for ggplot2
+```{r}
+lpp <- melt(pp.write, id.vars = c('ses', 'write'), value.name = 'probability')
+head(lpp)
+```
+plot 
+```{r}
+ggplot(lpp, aes(write, probability, colour = ses)) + 
+  geom_line() + 
+  facet_grid(variable ~ ., scales = 'free')
+```
+
+
+# Ordinal logistic regression
+import
+```{r}
+dat <- read.dta('~/Desktop/MachineLearning/Data/ologit.dta')
+head(dat)
+```
+
+```{r}
+lapply(dat[ , c('apply', 'pared', 'public')], table)
+```
+
+```{r}
+summary(dat$gpa)
+```
+
+```{r}
+sd(dat$gpa)
+```
+
+```{r}
+ftable(xtabs(~ public + apply + pared, data = dat))
+```
+
+```{r}
+ggplot(dat, aes(apply, gpa)) + 
+  geom_boxplot(outlier.shape = NA) + 
+  geom_jitter(alpha = 0.5) + 
+  facet_grid(pared ~ public, margins = TRUE) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+```
+
+fit model
+```{r}
+model2 <- polr(apply ~ pared + public + gpa, data = dat, Hess = TRUE)
+summary(model2)
+```
+
+store table
+```{r}
+ctable <- coef(summary(model2))
+```
+calculate and store p values
+```{r}
+p <- pnorm(abs(ctable[, 't value']), lower.tail = FALSE) * 2
+```
+combine
+```{r}
+ctable <- cbind(ctable, 'p value' = p)
+```
+
+```{r}
+ci <- confint(model2)
+confint.default(model2)
+```
+
+```{r}
+exp(coef(model2))
+```
+
+```{r}
+exp(cbind(OR = coef(model2), ci))
+```
+
