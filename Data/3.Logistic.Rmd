@@ -1,0 +1,50 @@
+---
+title: "3.Logistic"
+output: html_notebook
+---
+```{r}
+rm(list = ls())
+```
+
+## packages
+```{r}
+library(MASS)
+library(reshape2)
+library(ggplot2)
+library(corrplot)
+```
+
+import
+```{r}
+data(biopsy)
+str(biopsy)
+```
+
+```{r}
+biopsy$ID <- NULL
+names(biopsy) <- c('thick', 'u.size', 'u.shape', 'adhsn', 's.size', 'nucl', 'chrom', 'n.nuc', 'mit', 'class')
+names(biopsy)
+```
+
+```{r}
+biopsy.v2 <- na.omit(biopsy)
+y <- ifelse(biopsy.v2$class == 'malignant', 1, 0)
+```
+
+explore
+```{r}
+biop.m <- melt(biopsy.v2, id.vars = 'class')
+```
+
+```{r}
+ggplot(biop.m, aes(class, value)) + 
+  geom_boxplot() + 
+  facet_wrap(~ variable) + 
+  theme_bw()
+```
+
+```{r}
+bc <- cor(biopsy.v2[, 1:9])
+corrplot.mixed(bc)
+```
+
