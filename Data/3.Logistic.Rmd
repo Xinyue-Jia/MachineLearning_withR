@@ -12,6 +12,10 @@ library(MASS)
 library(reshape2)
 library(ggplot2)
 library(corrplot)
+library(car)
+library(InformationValue)
+library(bestglm)
+library(leaps)
 ```
 
 import
@@ -46,5 +50,60 @@ ggplot(biop.m, aes(class, value)) +
 ```{r}
 bc <- cor(biopsy.v2[, 1:9])
 corrplot.mixed(bc)
+```
+
+```{r}
+set.seed(123)
+ind <- sample(2, nrow(biopsy.v2), replace = TRUE, prob = c(0.7, 0.3))
+train <- biopsy.v2[ind == 1, ]
+test <- biopsy.v2[ind == 2, ]
+str(test)
+```
+
+```{r}
+model0 <- glm(class ~ ., family = binomial, data = train)
+summary(model0)
+```
+
+```{r}
+exp(confint(model0))
+```
+
+colinearity
+```{r}
+vif(model0)
+```
+
+```{r}
+train.probs <- predict(model0, type = 'response')
+head(train.probs)
+contrasts(train$class)
+```
+
+```{r}
+trainY <- y[ind == 1]
+testY <- y[ind == 2]
+confusionMatrix(trainY, train.probs)
+```
+```{r}
+misClassError(trainY, train.probs)
+```
+
+```{r}
+test.probs <- predict(model0, newdata = test, type = 'response')
+misClassError(testY, test.probs)
+```
+
+```{r}
+confusionMatrix(testY, test.probs)
+```
+```{r}
+x <- train[, 1:9]
+Xy <- data.frame(cbind(x, trainY))
+bestglm(Xy = Xy, IC = 'CV', CVArgs = list(Method = 'HTF', K = 10, REP = 1), family = binomial)
+```
+
+```{r}
+model1 <- glm(class ~ thick + u.size + nucl, family = binomial, data = train)
 ```
 
